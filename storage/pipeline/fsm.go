@@ -90,7 +90,8 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorOldTicket{}, GetTicket),
 	),
 	PreCommit2: planOne(
-		on(SectorPreCommit2{}, SubmitPreCommitBatch),
+		on(SectorPreCommit2{}, FinalizeSector),
+		//on(SectorPreCommit2{}, SubmitPreCommitBatch),
 		on(SectorSealPreCommit2Failed{}, SealPreCommit2Failed),
 		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
 	),
@@ -153,7 +154,8 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	),
 
 	FinalizeSector: planOne(
-		onWithCB(SectorFinalized{}, Proving, maybeNotifyRemoteDone(true, "Proving")),
+		on(SectorFinalized{}, Proving),
+		//onWithCB(SectorFinalized{}, Proving, maybeNotifyRemoteDone(true, "Proving")),
 		onWithCB(SectorFinalizedAvailable{}, Available, maybeNotifyRemoteDone(true, "Available")),
 		on(SectorFinalizeFailed{}, FinalizeFailed),
 	),

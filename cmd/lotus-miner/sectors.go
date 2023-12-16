@@ -69,6 +69,142 @@ var sectorsCmd = &cli.Command{
 		sectorsRefreshPieceMatchingCmd,
 		sectorsCompactPartitionsCmd,
 		sectorsUnsealCmd,
+		sectorsRedoCmd,
+		sectorsRedoDeadlineCmd,
+		sectorsRedoPartitionCmd,
+	},
+}
+
+var sectorsRedoCmd = &cli.Command{
+	Name:      "redo-sector",
+	Usage:     "redo sector",
+	ArgsUsage: "<sectorNum>",
+	Action: func(cctx *cli.Context) error {
+		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
+		}
+		sid, err := strconv.ParseUint(cctx.Args().First(), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		err = minerApi.RedoSector(ctx, int(sid))
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("Redo sector: ", sid)
+
+		return nil
+	},
+}
+
+var sectorsRedoDeadlineCmd = &cli.Command{
+	Name:  "redo-deadline",
+	Usage: "redo deadline sector",
+	Flags: []cli.Flag{
+		&cli.Uint64Flag{
+			Name:  "deadline",
+			Usage: "deadline",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		fullApi, nCloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer nCloser()
+
+		maddr, err := getActorAddress(ctx, cctx)
+		if err != nil {
+			return err
+		}
+
+		deadline := cctx.Uint64("deadline")
+		partitions, err := fullApi.StateMinerPartitions(ctx, maddr, deadline, types.EmptyTSK)
+
+		for i, partition := range partitions {
+			log.Infow("Redo sector", "deadline", deadline, "partition", i)
+			err = partition.LiveSectors.ForEach(func(u uint64) error {
+				err = minerApi.RedoSector(ctx, int(u))
+				if err != nil {
+					return err
+				}
+				fmt.Println("Redo sector: ", u)
+
+				return nil
+			})
+		}
+
+		return nil
+	},
+}
+
+var sectorsRedoPartitionCmd = &cli.Command{
+	Name:  "redo-partition",
+	Usage: "redo partition sector",
+	Flags: []cli.Flag{
+		&cli.Uint64Flag{
+			Name:  "deadline",
+			Usage: "deadline",
+		},
+		&cli.Uint64Flag{
+			Name:  "partition",
+			Usage: "partition",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		fullApi, nCloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer nCloser()
+
+		maddr, err := getActorAddress(ctx, cctx)
+		if err != nil {
+			return err
+		}
+		deadline := cctx.Uint64("deadline")
+		partitions, err := fullApi.StateMinerPartitions(ctx, maddr, deadline, types.EmptyTSK)
+
+		for i, partition := range partitions {
+			if i != int(cctx.Uint64("partition")) {
+				continue
+			}
+			log.Infow("Redo sector", "deadline", deadline, "partition", i)
+			err = partition.LiveSectors.ForEach(func(u uint64) error {
+				err = minerApi.RedoSector(ctx, int(u))
+				if err != nil {
+					return err
+				}
+				fmt.Println("Redo sector: ", u)
+
+				return nil
+			})
+		}
+
+		return nil
 	},
 }
 

@@ -194,24 +194,24 @@ func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.Se
 }
 
 func (m *Sealing) handleGetTicket(ctx statemachine.Context, sector SectorInfo) error {
-	ticketValue, ticketEpoch, allocated, err := m.getTicket(ctx, sector)
-	if err != nil {
-		if allocated {
-			if sector.CommitMessage != nil {
-				// Some recovery paths with unfortunate timing lead here
-				return ctx.Send(SectorCommitFailed{xerrors.Errorf("sector %s is committed but got into the GetTicket state", sector.SectorNumber)})
-			}
-
-			log.Errorf("Sector %s precommitted but expired", sector.SectorNumber)
-			return ctx.Send(SectorRemove{})
-		}
-
-		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("getting ticket failed: %w", err)})
-	}
+	//ticketValue, ticketEpoch, allocated, err := m.getTicket(ctx, sector)
+	//if err != nil {
+	//	if allocated {
+	//		if sector.CommitMessage != nil {
+	//			// Some recovery paths with unfortunate timing lead here
+	//			return ctx.Send(SectorCommitFailed{xerrors.Errorf("sector %s is committed but got into the GetTicket state", sector.SectorNumber)})
+	//		}
+	//
+	//		log.Errorf("Sector %s precommitted but expired", sector.SectorNumber)
+	//		return ctx.Send(SectorRemove{})
+	//	}
+	//
+	//	return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("getting ticket failed: %w", err)})
+	//}
 
 	return ctx.Send(SectorTicket{
-		TicketValue: ticketValue,
-		TicketEpoch: ticketEpoch,
+		TicketValue: sector.TicketValue,
+		TicketEpoch: sector.TicketEpoch,
 	})
 }
 
@@ -267,48 +267,48 @@ func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) 
 		}
 	}
 
-	ts, err := m.Api.ChainHead(ctx.Context())
-	if err != nil {
-		log.Errorf("handlePreCommit1: api error, not proceeding: %+v", err)
-		return nil
-	}
-
-	if checkTicketExpired(sector.TicketEpoch, ts.Height()) {
-		pci, err := m.Api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, ts.Key())
-		if err != nil {
-			log.Errorf("handlePreCommit1: StateSectorPreCommitInfo: api error, not proceeding: %+v", err)
-			return nil
-		}
-
-		if pci == nil {
-			return ctx.Send(SectorOldTicket{}) // go get new ticket
-		}
-
-		nv, err := m.Api.StateNetworkVersion(ctx.Context(), ts.Key())
-		if err != nil {
-			log.Errorf("handlePreCommit1: StateNetworkVersion: api error, not proceeding: %+v", err)
-			return nil
-		}
-
-		av, err := actorstypes.VersionForNetwork(nv)
-		if err != nil {
-			log.Errorf("handlePreCommit1: VersionForNetwork error, not proceeding: %w", err)
-			return nil
-		}
-		msd, err := policy.GetMaxProveCommitDuration(av, sector.SectorType)
-		if err != nil {
-			log.Errorf("handlePreCommit1: GetMaxProveCommitDuration error, not proceeding: %w", err)
-			return nil
-		}
-
-		// if height >  PreCommitEpoch + msd, there is no need to recalculate
-		if checkProveCommitExpired(pci.PreCommitEpoch, msd, ts.Height()) {
-			return ctx.Send(SectorOldTicket{}) // will be removed
-		}
-	}
+	//ts, err := m.Api.ChainHead(ctx.Context())
+	//if err != nil {
+	//	log.Errorf("handlePreCommit1: api error, not proceeding: %+v", err)
+	//	return nil
+	//}
+	//
+	//if checkTicketExpired(sector.TicketEpoch, ts.Height()) {
+	//	pci, err := m.Api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, ts.Key())
+	//	if err != nil {
+	//		log.Errorf("handlePreCommit1: StateSectorPreCommitInfo: api error, not proceeding: %+v", err)
+	//		return nil
+	//	}
+	//
+	//	if pci == nil {
+	//		return ctx.Send(SectorOldTicket{}) // go get new ticket
+	//	}
+	//
+	//	nv, err := m.Api.StateNetworkVersion(ctx.Context(), ts.Key())
+	//	if err != nil {
+	//		log.Errorf("handlePreCommit1: StateNetworkVersion: api error, not proceeding: %+v", err)
+	//		return nil
+	//	}
+	//
+	//	av, err := actorstypes.VersionForNetwork(nv)
+	//	if err != nil {
+	//		log.Errorf("handlePreCommit1: VersionForNetwork error, not proceeding: %w", err)
+	//		return nil
+	//	}
+	//	msd, err := policy.GetMaxProveCommitDuration(av, sector.SectorType)
+	//	if err != nil {
+	//		log.Errorf("handlePreCommit1: GetMaxProveCommitDuration error, not proceeding: %w", err)
+	//		return nil
+	//	}
+	//
+	//	// if height >  PreCommitEpoch + msd, there is no need to recalculate
+	//	if checkProveCommitExpired(pci.PreCommitEpoch, msd, ts.Height()) {
+	//		return ctx.Send(SectorOldTicket{}) // will be removed
+	//	}
+	//}
 
 	var pc1o storiface.PreCommit1Out
-	err = retrySoftErr(ctx.Context(), func() (err error) {
+	err := retrySoftErr(ctx.Context(), func() (err error) {
 		pc1o, err = m.sealer.SealPreCommit1(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), sector.TicketValue, sector.pieceInfos())
 		return err
 	})

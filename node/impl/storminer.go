@@ -185,6 +185,15 @@ func (sm *StorageMinerAPI) PledgeSector(ctx context.Context) (abi.SectorID, erro
 	return sm.waitSectorStarted(ctx, sr.ID)
 }
 
+func (sm *StorageMinerAPI) RedoSector(ctx context.Context, sid int) error {
+	err := sm.Miner.RedoSector(ctx, sid)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (sm *StorageMinerAPI) waitSectorStarted(ctx context.Context, si abi.SectorID) (abi.SectorID, error) {
 	// wait for the sector to enter the Packing state
 	// TODO: instead of polling implement some pubsub-type thing in storagefsm

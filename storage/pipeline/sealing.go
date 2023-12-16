@@ -131,6 +131,9 @@ type Sealing struct {
 	legacySc *storedcounter.StoredCounter
 
 	getConfig dtypes.GetSealingConfigFunc
+
+	redoLk         sync.Mutex
+	redoingSectors map[int]struct{}
 }
 
 type openSector struct {
@@ -246,7 +249,8 @@ func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events 
 		precommiter: NewPreCommitBatcher(mctx, maddr, api, addrSel, fc, gc),
 		commiter:    NewCommitBatcher(mctx, maddr, api, addrSel, fc, gc, prov),
 
-		getConfig: gc,
+		getConfig:      gc,
+		redoingSectors: map[int]struct{}{},
 
 		legacySc: storedcounter.New(ds, datastore.NewKey(StorageCounterDSPrefix)),
 

@@ -1024,6 +1024,8 @@ type StorageMinerMethods struct {
 
 	PledgeSector func(p0 context.Context) (abi.SectorID, error) `perm:"write"`
 
+	RedoSector func(p0 context.Context, p1 int) error `perm:"write"`
+
 	RecoverFault func(p0 context.Context, p1 []abi.SectorNumber) ([]cid.Cid, error) `perm:"admin"`
 
 	ReturnAddPiece func(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) error `perm:"admin"`
@@ -6121,6 +6123,17 @@ func (s *StorageMinerStruct) PledgeSector(p0 context.Context) (abi.SectorID, err
 		return *new(abi.SectorID), ErrNotSupported
 	}
 	return s.Internal.PledgeSector(p0)
+}
+
+func (s *StorageMinerStruct) RedoSector(p0 context.Context, p1 int) error {
+	if s.Internal.RedoSector == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.RedoSector(p0, p1)
+}
+
+func (s *StorageMinerStub) RedoSector(ctx context.Context, sid int) error {
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStub) PledgeSector(p0 context.Context) (abi.SectorID, error) {
